@@ -117,16 +117,23 @@ Os valores de `Authorization`, `Cookie`, `Set-Cookie` e `X-Api-Key` (sem
 diferenciar maiúsculas) são gravados como `***`, na requisição e na resposta.
 O cliente e o serviço continuam vendo os valores originais.
 
-A troca do exemplo acima fica assim (quebrada em linhas aqui para leitura; no
-arquivo é uma linha só):
+Uma linha real, gravada pelo `parallax record` com a mesma requisição do
+exemplo (`GET /status.json?q=1` com `Authorization: Bearer x`), na frente de um
+servidor de arquivos servindo o mesmo `status.json`. O cliente era o do Go, não
+o curl, por isso `User-Agent` e `Accept-Encoding` mudam; com o curl e o servidor
+do Python mudam também `User-Agent`, `Accept` e `Server`. Aqui ela foi quebrada
+em linhas para leitura; no arquivo é uma linha só:
 
 ```json
-{"horario":"2026-11-18T14:02:31.418265Z","metodo":"GET","caminho":"/status.json","query":"q=1",
- "cabecalhos_requisicao":{"Accept":["*/*"],"Authorization":["***"],"Host":["localhost:9100"],"User-Agent":["curl/8.9.1"]},
+{"horario":"2026-11-18T04:40:32.8351407Z","metodo":"GET","caminho":"/status.json","query":"q=1",
+ "cabecalhos_requisicao":{"Accept-Encoding":["gzip"],"Authorization":["***"],"Host":["127.0.0.1:59273"],"User-Agent":["Go-http-client/1.1"]},
  "corpo_requisicao":"","status":200,
- "cabecalhos_resposta":{"Content-Length":["12"],"Content-Type":["application/json"],"Date":["Wed, 18 Nov 2026 14:02:31 GMT"],"Last-Modified":["Wed, 18 Nov 2026 14:01:02 GMT"],"Server":["SimpleHTTP/0.6 Python/3.12.7"]},
- "corpo_resposta":"eyJvayI6dHJ1ZX0K","latencia_ms":3.0215}
+ "cabecalhos_resposta":{"Accept-Ranges":["bytes"],"Content-Length":["12"],"Content-Type":["application/json"],"Date":["Wed, 18 Nov 2026 04:40:32 GMT"],"Last-Modified":["Wed, 18 Nov 2026 04:40:32 GMT"]},
+ "corpo_resposta":"eyJvayI6dHJ1ZX0K","latencia_ms":39.4514}
 ```
+
+O `Authorization` foi gravado como `***`, e `corpo_resposta` é o base64 de
+`{"ok":true}\n`.
 
 Para ver os corpos, decodifique o base64. Com `jq`:
 
