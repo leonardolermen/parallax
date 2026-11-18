@@ -175,6 +175,7 @@ func (g *Gravador) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	inicio := time.Now()
+	relogio := instante()
 	cabReq := r.Header.Clone()
 	if cabReq == nil {
 		cabReq = http.Header{}
@@ -193,7 +194,7 @@ func (g *Gravador) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if falha.Load() || r.Context().Err() != nil || rw.sequestrou || !rw.escreveu {
 		return
 	}
-	latencia := float64(time.Since(inicio)) / float64(time.Millisecond)
+	latencia := decorridoMs(relogio)
 	corpoReq, reqTruncado := copiaReq.conteudo()
 	corpoResp, respTruncado := rw.corpo.conteudo()
 	troca := Troca{
