@@ -13,3 +13,6 @@ bin/
 *.test
 *.out
 *.log
+.parallax/
+*.jsonl
+/parallax
