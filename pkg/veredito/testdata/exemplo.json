@@ -1,0 +1,99 @@
+{
+  "versao": 1,
+  "id": "01JDB7Q8Z3X4M5N6P7R8S9T0VW",
+  "resultado": "regressao",
+  "resumo": "3 regressões da branch em 120 trocas repetidas: erro 500 em GET /orders/{id}, campo removido em GET /customers/{id} e p95 acima do limite em GET /search.",
+  "estatisticas": {
+    "total": 120,
+    "identicas": 112,
+    "diferentes": 8,
+    "latencia": {
+      "base": { "p50_ms": 12.4, "p95_ms": 48.9 },
+      "candidata": { "p50_ms": 13.1, "p95_ms": 97.3 },
+      "delta": { "p50_ms": 0.7, "p95_ms": 48.4 }
+    }
+  },
+  "achados": [
+    {
+      "tipo": "erro_novo",
+      "origem": "branch",
+      "endpoint": "GET /orders/{id}",
+      "reproducao": "curl -sS -X GET 'http://localhost:8080/orders/42?expand=items' -H 'Accept: application/json'",
+      "base": {
+        "status": 200,
+        "corpo": "{\"id\":42,\"total\":10.5,\"items\":[...]}",
+        "latencia_ms": 11.8,
+        "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+      },
+      "candidata": {
+        "status": 500,
+        "corpo": "panic: runtime error: invalid memory address or nil pointer dereference",
+        "latencia_ms": 3.2,
+        "trace_id": "0af7651916cd43dd8448eb211c80319c"
+      },
+      "local": "internal/orders/handler.go:87"
+    },
+    {
+      "tipo": "contrato_quebrado",
+      "origem": "branch",
+      "endpoint": "GET /customers/{id}",
+      "reproducao": "curl -sS -X GET 'http://localhost:8080/customers/7' -H 'Accept: application/json'",
+      "base": {
+        "status": 200,
+        "corpo": "{\"id\":7,\"name\":\"Ana\",\"email\":\"ana@example.com\",\"age\":31}",
+        "latencia_ms": 9.6,
+        "trace_id": "5c0a9e1f2b3d4c5e6f708192a3b4c5d6"
+      },
+      "candidata": {
+        "status": 200,
+        "corpo": "{\"id\":7,\"name\":\"Ana\",\"age\":\"31\"}",
+        "latencia_ms": 10.1,
+        "trace_id": "e1d2c3b4a5968778695a4b3c2d1e0f11"
+      },
+      "diff": [
+        { "caminho": "$.email", "antes": "\"ana@example.com\"" },
+        { "caminho": "$.age", "antes": 31, "depois": "31" }
+      ]
+    },
+    {
+      "tipo": "latencia",
+      "origem": "branch",
+      "endpoint": "GET /search",
+      "reproducao": "curl -sS -X GET 'http://localhost:8080/search?q=caneta'",
+      "base": {
+        "status": 200,
+        "corpo": "{\"results\":[...]}",
+        "latencia_ms": 45.2,
+        "trace_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      },
+      "candidata": {
+        "status": 0,
+        "corpo": "",
+        "latencia_ms": 5000,
+        "trace_id": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+        "erro": "timeout"
+      }
+    },
+    {
+      "tipo": "diferenca",
+      "origem": "pre_existente",
+      "endpoint": "GET /health",
+      "reproducao": "curl -sS -X GET 'http://localhost:8080/health'",
+      "base": {
+        "status": 200,
+        "corpo": "{\"status\":\"ok\",\"uptime\":3600}",
+        "latencia_ms": 1.1,
+        "trace_id": "11111111111111111111111111111111"
+      },
+      "candidata": {
+        "status": 200,
+        "corpo": "{\"status\":\"ok\",\"uptime\":12}",
+        "latencia_ms": 1.3,
+        "trace_id": "22222222222222222222222222222222"
+      },
+      "diff": [
+        { "caminho": "$.uptime", "antes": 3600, "depois": 12 }
+      ]
+    }
+  ]
+}
