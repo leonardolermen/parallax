@@ -27,7 +27,7 @@ type marca struct {
 
 func lerFrequencia() int64 {
 	var f int64
-	if procFreq.Find() != nil {
+	if procFreq.Find() != nil || procContador.Find() != nil {
 		return 0
 	}
 	if r, _, _ := procFreq.Call(uintptr(unsafe.Pointer(&f))); r == 0 {

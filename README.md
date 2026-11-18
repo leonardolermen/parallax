@@ -117,12 +117,14 @@ Os valores de `Authorization`, `Cookie`, `Set-Cookie` e `X-Api-Key` (sem
 diferenciar maiúsculas) são gravados como `***`, na requisição e na resposta.
 O cliente e o serviço continuam vendo os valores originais.
 
-Uma linha real, gravada pelo `parallax record` com a mesma requisição do
-exemplo (`GET /status.json?q=1` com `Authorization: Bearer x`), na frente de um
-servidor de arquivos servindo o mesmo `status.json`. O cliente era o do Go, não
-o curl, por isso `User-Agent` e `Accept-Encoding` mudam; com o curl e o servidor
-do Python mudam também `User-Agent`, `Accept` e `Server`. Aqui ela foi quebrada
-em linhas para leitura; no arquivo é uma linha só:
+Uma linha real, gravada pelo código do `parallax record` (a mesma função da
+CLI, chamada num teste) com a mesma requisição do exemplo
+(`GET /status.json?q=1` com `Authorization: Bearer x`). O serviço era o
+`http.FileServer` do Go servindo o mesmo `status.json`, o cliente era o do Go e
+o proxy escutava numa porta aleatória. Por isso `Host`, `User-Agent`,
+`Accept`/`Accept-Encoding`, `Accept-Ranges` e `Server` diferem do que o curl e o
+`python -m http.server` produzem. Aqui ela foi quebrada em linhas para leitura;
+no arquivo é uma linha só:
 
 ```json
 {"horario":"2026-11-18T04:40:32.8351407Z","metodo":"GET","caminho":"/status.json","query":"q=1",
