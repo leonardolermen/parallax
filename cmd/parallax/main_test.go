@@ -54,7 +54,7 @@ func TestHelp(t *testing.T) {
 }
 
 func TestNaoImplementado(t *testing.T) {
-	for _, cmd := range []string{"replay", "check"} {
+	for _, cmd := range []string{"check"} {
 		codigo, _, stderr := rodar(cmd)
 		if codigo != 3 || !strings.Contains(stderr, "ainda não implementado") {
 			t.Errorf("%s: código %d, stderr %q", cmd, codigo, stderr)

@@ -1,4 +1,4 @@
-// Comando parallax: CLI fina por cima de internal/captura e pkg/veredito.
+// Comando parallax: CLI fina por cima de captura, repeticao e pkg/veredito.
 //
 // Uso: parallax <comando> [flags]. Veja "parallax help".
 package main
@@ -24,13 +24,14 @@ Uso:
 
 Comandos:
   record    grava o tráfego real como proxy reverso na frente de um serviço
-  replay    repete uma captura contra base e candidata (ainda não implementado)
+  replay    repete uma captura contra base e candidata e produz achados JSON
   check     compara e devolve o veredito (ainda não implementado)
   version   mostra a versão
   help      mostra esta ajuda
 
 Exemplo:
   parallax record --listen :9100 --upstream http://localhost:8080 --out captura.jsonl
+  parallax replay --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081
 
 Flags de cada comando: parallax <comando> -h
 
@@ -61,7 +62,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return gravar(ctx, args[1:], func(endereco string) {
 			fmt.Fprintf(stderr, "gravando em %s (Ctrl+C para encerrar)\n", endereco)
 		}, stderr)
-	case "replay", "check":
+	case "replay":
+		ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer parar()
+		return repetir(ctx, args[1:], stdout, stderr)
+	case "check":
 		fmt.Fprintf(stderr, "parallax %s: ainda não implementado\n", args[0])
 		return veredito.SaidaNaoImplementado
 	default:
