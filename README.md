@@ -12,17 +12,18 @@ Go 1.22 ou mais novo, só a biblioteca padrão. Nenhuma chamada a modelo de IA.
 
 ## Estado atual
 
-Esta é a parte 1 de 3:
+Esta é a parte 2 de 3:
 
 | comando | estado |
 |---|---|
 | `parallax record` | pronto: grava o tráfego real como proxy reverso |
-| `parallax replay` | ainda não implementado (sai com código 3) |
+| `parallax replay` | pronto: repete a captura contra base e candidata e produz achados JSON |
 | `parallax check` | ainda não implementado (sai com código 3) |
 | `parallax version`, `parallax help` | prontos |
 
 O contrato do veredito (`veredito.json`) já está definido e documentado em
-[docs/contrato.md](docs/contrato.md).
+[docs/contrato.md](docs/contrato.md). O replay ainda não calcula esse veredito:
+resultado aprovado/reprovado, laudo legível e histórico ficam para a parte 3.
 
 ## Estrutura
 
@@ -42,6 +43,7 @@ internal/
     service_gravador.go   o gravador: proxy reverso (http.Handler) que grava cada troca
     service_resposta.go   cópia limitada dos corpos e ResponseWriter que grava a resposta
     service_mascara.go    máscara dos cabeçalhos sensíveis (***)
+  repeticao/            validação integral, replay concorrente e comparação de respostas
   platform/             infraestrutura comum
     relogio_windows.go    relógio de alta resolução para latência (QueryPerformanceCounter)
     relogio_other.go      o mesmo fora do Windows (time.Now)
@@ -59,7 +61,7 @@ docs/
 
 ```sh
 go build -o parallax ./cmd/parallax     # no Windows: go build -o parallax.exe ./cmd/parallax
-go test ./...
+go test -timeout 120s ./...
 ```
 
 Para gravar a versão no binário:
@@ -124,7 +126,111 @@ cliente mandou.
 O formato do arquivo (campo a campo, com uma linha real), o que não é gravado e
 a segurança na repetição estão em [docs/captura.md](docs/captura.md).
 
+## Repetir e comparar: `parallax replay`
+
+Com a base na porta 8080, a candidata na 8081 e uma captura feita pelo
+`record` (os dois serviços precisam estar rodando):
+
+```sh
+./parallax replay --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081 --out achados.json
+```
+
+No Windows, use `./parallax.exe`. Sem `--out`, o JSON vai para a saída padrão.
+O arquivo de saída é sobrescrito se existir, mas não pode ser a própria captura.
+
+### Flags do replay
+
+| flag | padrão | significado |
+|---|---|---|
+| `--capture` | (obrigatória) | captura JSONL produzida pelo `record` |
+| `--base` | (obrigatória) | URL absoluta HTTP(S) da versão base |
+| `--candidate` | (obrigatória) | URL absoluta HTTP(S) da versão candidata |
+| `--out` | saída padrão | arquivo JSON com estatísticas e achados |
+| `--workers` | `4` | máximo de trabalhadores; cada um envia base e depois candidata |
+| `--timeout` | `10s` | timeout por requisição, incluindo a leitura da resposta |
+| `--latency-pct` | `50` | aumento percentual do p95 que precisa ser ultrapassado |
+| `--latency-min-ms` | `20` | aumento mínimo do p95, em ms, junto com o percentual |
+| `--latency-max-ms` | `0` | teto absoluto do p95 da candidata, em ms; `0` desativa |
+| `--allow-unsafe` | `false` | permite métodos além de GET, HEAD e OPTIONS |
+| `--header` | nenhum | `Nome: valor` para ambos os destinos, substitui o cabeçalho capturado; repetível |
+| `--max-body` | `1048576` (1 MiB) | limite de bytes lidos por resposta, inclusive após descompactar gzip |
+
+Workers, timeout, max-body, percentual e mínimo devem ser positivos; o teto
+aceita zero. Não há leitura de `parallax.yaml` nesta etapa.
+
+### Execução e segurança
+
+A configuração e a captura inteira são validadas antes de qualquer envio:
+uma linha inválida ou captura vazia aborta sem tráfego. Por padrão só GET,
+HEAD e OPTIONS são repetidos; requisições com corpo truncado são sempre
+puladas. O corpo da resposta gravada não é a referência: o replay compara
+as respostas novas da base e da candidata.
+
+O caminho das URLs de destino é prefixado ao caminho capturado; a query vem
+da captura. Não coloque query em `--base` ou `--candidate`: ela é descartada.
+Redirecionamentos não são seguidos. Cada requisição recebe um `traceparent`
+novo, independente entre trocas e entre base e candidata. Os clientes têm
+timeout e respeitam cancelamento (Ctrl+C).
+
+Cabeçalhos mascarados como `***` não são enviados. Host, Content-Length,
+cabeçalhos de conexão e traces anteriores são removidos/recalculados.
+Para autenticar, use, por exemplo, `--header 'Authorization: Bearer TOKEN_DE_TESTE'`.
+**Os valores de `--header` podem aparecer em texto puro no `curl` de reprodução
+dos achados**, inclusive na saída padrão. Proteja o JSON e use credenciais de teste.
+Veja também [segurança da captura](docs/captura.md#segurança-na-repetição).
+
+### Regras de comparação
+
+- Status diferentes geram `diferenca`. Com status igual, são comparados
+  Content-Type, Location e Cache-Control, além do corpo.
+- Corpos JSON ignoram a ordem das chaves; arrays mantêm a ordem. Campo removido
+  ou tipo alterado (inclusive `null`) gera `contrato_quebrado`; outros valores
+  alterados geram `diferenca`, com até 50 entradas de diff. `1` e `1.0` contam
+  como diferentes. Corpos que não sejam JSON válido dos dois lados são comparados
+  byte a byte. Gzip é descompactado; br e deflate ainda são comparados comprimidos.
+- 5xx, timeout ou conexão recusada na candidata geram `erro_novo`, com origem
+  `pre_existente` se a base também tem uma dessas falhas; senão, `branch`.
+  Outras falhas de rede, como DNS ou conexão interrompida só na candidata,
+  geram `diferenca`.
+- Resposta acima de `--max-body` gera `diferenca` por comparação incompleta
+  e a execução continua; igualdade dos prefixos não significa resposta idêntica.
+  A classificação `erro_novo` tem prioridade sobre comparação incompleta.
+
+O p95 é comparado por método e rota normalizada: segmentos numéricos, UUIDs,
+ULIDs e hexadecimais de 16 ou mais caracteres viram `{id}` (ex.: `GET /orders/{id}`).
+A query não separa endpoints. Só entram nos percentis pares completos e sem
+erro de transporte; o cálculo usa nearest-rank (posição `ceil(p/100 × n)`
+nas amostras ordenadas).
+
+Há achado `latencia` quando o p95 da candidata é **mais de 50% maior E pelo
+menos 20 ms acima** da base (limites configuráveis). Essa regra é avaliada
+primeiro e gera origem `branch`, mesmo que a base já passe do teto absoluto:
+assim, ligar o teto não esconde uma regressão relativa. Senão, ultrapassar
+`--latency-max-ms` também gera achado: `pre_existente` se a base já excedia
+o teto, ou `branch` caso contrário. Com teto 50 ms, 60→100 ms é `branch` e
+60→79 ms é `pre_existente`.
+
+### Saída
+
+O JSON tem `id`, `estatisticas` e `achados` (lista vazia quando não há nenhum).
+As estatísticas incluem `total` repetido, `identicas`, `diferentes`, `puladas`
+e p50/p95 globais de base, candidata e delta. Achados de latência são agregados
+à parte e não aumentam `diferentes`.
+
+Os achados por troca seguem a ordem original da captura, embora os envios
+possam intercalar trabalhadores. Os de latência vêm ao final, ordenados por
+endpoint. Cada achado traz tipo, origem, endpoint, `curl` da candidata e dados
+dos dois lados (status, corpo resumido a 500 caracteres, latência, trace ID e
+eventual erro), além de diff quando aplicável. Os tipos dos achados estão em
+[docs/contrato.md](docs/contrato.md#achados), mas a saída do replay é própria:
+não contém `versao`, `resultado` ou `resumo`, nem grava histórico.
+
 ## Códigos de saída
+
+**Replay retorna 0 ao concluir, mesmo com achados; 4 em caso de uso errado,
+captura inválida ou falha de execução.** Erros HTTP comparados são achados e
+não mudam o código de saída. Os códigos 1 e 2 pertencem ao contrato do veredito
+da parte 3, ainda não emitido pelo replay.
 
 | código | quando |
 |---|---|
