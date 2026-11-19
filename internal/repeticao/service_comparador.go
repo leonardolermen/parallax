@@ -33,7 +33,7 @@ func comparar(t captura.Troca, c Config, b, a resposta) []veredito.Achado {
 	if b.Status != a.Status {
 		return makeAchado(veredito.Diferenca, veredito.Branch, nil)
 	}
-	changed := b.Status != a.Status || b.Erro != a.Erro
+	changed := b.Erro != a.Erro
 	var diffs []veredito.Mudanca
 	for _, h := range []string{"Content-Type", "Location", "Cache-Control"} {
 		if !reflect.DeepEqual(b.Cabecalhos.Values(h), a.Cabecalhos.Values(h)) {
