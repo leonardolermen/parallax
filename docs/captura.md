@@ -68,8 +68,20 @@ jq -r '.corpo_resposta | @base64d' captura.jsonl
 
 ### Segurança na repetição
 
-A gravação registra todos os métodos. A repetição (parte 2) só vai repetir
+A gravação registra todos os métodos. O replay só repete
 métodos seguros (`GET`, `HEAD`, `OPTIONS`) por padrão: repetir um `POST` pode
 cobrar, enviar webhook ou mandar e-mail. Outros métodos só com `--allow-unsafe`
-ou com a rota marcada como idempotente no `parallax.yaml`.
+(não há leitura de `parallax.yaml` nesta etapa). Requisições com corpo truncado
+são sempre puladas; uma resposta gravada truncada não impede o replay, pois
+as respostas comparadas são as novas da base e da candidata.
+
+A captura inteira e a configuração são validadas antes de qualquer envio;
+uma linha inválida aborta sem enviar tráfego. Cabeçalhos mascarados como `***`
+não são reenviados. `--header 'Nome: valor'` injeta o valor nos dois destinos,
+mas ele pode aparecer em texto puro no `curl` dos achados JSON. Use credenciais
+de teste e proteja a captura e os resultados: a máscara cobre apenas os quatro
+cabeçalhos listados acima, não corpos, query strings ou outros cabeçalhos.
+
+Como rodar, flags e regras de comparação:
+[replay no README](../README.md#repetir-e-comparar-parallax-replay).
 
