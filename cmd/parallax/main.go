@@ -1,4 +1,4 @@
-// Comando parallax: CLI fina por cima de pkg/motor.
+// Comando parallax: CLI fina por cima de internal/captura e pkg/veredito.
 //
 // Uso: parallax <comando> [flags]. Veja "parallax help".
 package main

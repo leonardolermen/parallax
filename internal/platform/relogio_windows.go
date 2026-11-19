@@ -1,6 +1,6 @@
 //go:build windows
 
-package motor
+package platform
 
 import (
 	"syscall"
@@ -19,8 +19,8 @@ var (
 	frequencia   = lerFrequencia() // tiques por segundo; 0 se indisponível
 )
 
-// marca é um instante do relógio usado para medir latência.
-type marca struct {
+// Marca é um instante do relógio usado para medir latência.
+type Marca struct {
 	tiques int64     // QueryPerformanceCounter; válido só se frequencia > 0
 	tempo  time.Time // reserva, caso o contador não esteja disponível
 }
@@ -42,16 +42,16 @@ func lerContador() int64 {
 	return c
 }
 
-// instante lê o contador de alta resolução.
-func instante() marca {
+// Instante lê o contador de alta resolução.
+func Instante() Marca {
 	if frequencia > 0 {
-		return marca{tiques: lerContador()}
+		return Marca{tiques: lerContador()}
 	}
-	return marca{tempo: time.Now()}
+	return Marca{tempo: time.Now()}
 }
 
-// decorridoMs devolve os milissegundos desde inicio, com casas decimais.
-func decorridoMs(inicio marca) float64 {
+// DecorridoMs devolve os milissegundos desde inicio, com casas decimais.
+func DecorridoMs(inicio Marca) float64 {
 	if frequencia > 0 {
 		return float64(lerContador()-inicio.tiques) * 1000 / float64(frequencia)
 	}

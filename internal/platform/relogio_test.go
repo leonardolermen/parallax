@@ -1,4 +1,4 @@
-package motor
+package platform
 
 import "testing"
 
@@ -8,13 +8,13 @@ import "testing"
 func TestRelogioMedeIntervalosCurtos(t *testing.T) {
 	zeros := 0
 	for i := 0; i < 200; i++ {
-		inicio := instante()
+		inicio := Instante()
 		soma := 0
 		for j := 0; j < 20000; j++ {
 			soma += j
 		}
 		_ = soma
-		if decorridoMs(inicio) <= 0 {
+		if DecorridoMs(inicio) <= 0 {
 			zeros++
 		}
 	}

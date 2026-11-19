@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leonardolermen/parallax/pkg/motor"
+	"github.com/leonardolermen/parallax/internal/captura"
 )
 
 func rodar(args ...string) (int, string, string) {
@@ -181,7 +181,7 @@ func gravarPontaAPonta(t *testing.T, comLixo bool) {
 		t.Fatal(err)
 	}
 	defer f.Close()
-	l := motor.NovoLeitor(f)
+	l := captura.NovoLeitor(f)
 	var caminhos []string
 	for {
 		tr, err := l.Proxima()

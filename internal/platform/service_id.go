@@ -1,4 +1,4 @@
-package motor
+package platform
 
 import (
 	"crypto/rand"
