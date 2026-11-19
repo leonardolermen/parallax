@@ -25,14 +25,16 @@ func Percentil(amostras []float64, p float64) float64 {
 }
 
 // Regressao informa se o p95 viola o limite relativo ou absoluto.
+// A regra relativa vale primeiro: piora da candidata é sempre "branch".
+// "pre_existente" fica só quando a única violação é o teto e a base já passava dele.
 func Regressao(base, candidata float64, c Config) (bool, veredito.Origem) {
+	if candidata > base*(1+c.PercentualLatencia/100) && candidata-base >= c.MinimoLatenciaMs {
+		return true, veredito.Branch
+	}
 	if c.LimiteAbsolutoMs > 0 && candidata > c.LimiteAbsolutoMs {
 		if base > c.LimiteAbsolutoMs {
 			return true, veredito.PreExistente
 		}
-		return true, veredito.Branch
-	}
-	if candidata > base*(1+c.PercentualLatencia/100) && candidata-base >= c.MinimoLatenciaMs {
 		return true, veredito.Branch
 	}
 	return false, veredito.Branch

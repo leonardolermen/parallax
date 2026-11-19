@@ -28,8 +28,10 @@ Medir latência com platform.Instante/DecorridoMs. Agrupar por método e rota
 normalizada (números, UUID, ULID, hex >=16 substituídos por {id}). Nearest-rank
 para p50/p95, somente pares com resposta completa dos dois lados. Regressão:
 candidata p95 > base p95 * (1 + percentual/100) E delta >= mínimo (50%, 20 ms
-por padrão), OU candidata acima do teto absoluto opcional. Teto já excedido
-pela base tem origem pre_existente.
+por padrão), OU candidata acima do teto absoluto opcional. A regra relativa
+vale primeiro: se ela dispara, a origem é sempre branch (decisão do usuário
+na revisão #27). A origem é pre_existente só quando a única violação é o teto
+e a base também já passava dele.
 
 Saída própria: id, estatisticas (total repetido, identicas, diferentes,
 puladas, latencia), achados nunca null. Achados por troca em ordem da captura;

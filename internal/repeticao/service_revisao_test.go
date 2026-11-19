@@ -48,7 +48,9 @@ func TestRegressaoPrioridadeTeto(t *testing.T) {
 		ok                    bool
 		origem                veredito.Origem
 	}{
-		{"ambos criterios e teto preexistente", 60, 100, 50, true, veredito.PreExistente},
+		{"relativo vence teto preexistente", 60, 100, 50, true, veredito.Branch},
+		{"piora grande com teto preexistente", 60, 1000, 50, true, veredito.Branch},
+		{"teto preexistente sem minimo em ms", 60, 79, 50, true, veredito.PreExistente},
 		{"somente teto preexistente", 60, 61, 50, true, veredito.PreExistente},
 		{"ambos criterios novos", 30, 80, 50, true, veredito.Branch},
 		{"somente relativo", 40, 80, 100, true, veredito.Branch},
