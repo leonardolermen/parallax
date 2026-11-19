@@ -1,0 +1,25 @@
+#!/bin/sh
+# Antes do push: compila (com os testes) para Linux e macOS, além do sistema desta máquina.
+# Arquivos *_windows.go só entram no build do Windows; um nome trocado entre eles e os *_other.go
+# passa aqui e quebra nos outros sistemas. O go build e o go vet de cada sistema pegam isso em segundos.
+# Ligar neste clone: git config core.hooksPath .githooks   ·   Pular uma vez: git push --no-verify
+command -v go >/dev/null 2>&1 || exit 0
+cd "$(git rev-parse --show-toplevel)" || exit 0
+# Nome terminado em sistema ou arquitetura (ex.: *_solaris.go, *_linux.go) vira regra de build do Go:
+# o arquivo some dos outros sistemas. Aqui só *_windows.go e *_other.go são intencionais.
+odd=$(git ls-files -co --exclude-standard '*.go' | grep -E '_(aix|android|darwin|dragonfly|freebsd|hurd|illumos|ios|js|linux|nacl|netbsd|openbsd|plan9|solaris|wasip1|zos|386|amd64|arm|arm64|loong64|mips|mips64|mipsle|mips64le|ppc64|ppc64le|riscv64|s390x|wasm)(_test)?\.go$')
+if [ -n "$odd" ]; then
+	echo "pre-push: estes arquivos só compilam num sistema/arquitetura por causa do nome (renomeie):" >&2
+	echo "$odd" >&2
+	exit 1
+fi
+for os in linux darwin; do
+	# go build compila o código; go vet compila também os testes.
+	if ! out=$( (GOOS=$os GOARCH=amd64 go build ./... && GOOS=$os GOARCH=amd64 go vet ./...) 2>&1); then
+		echo "pre-push: o projeto não compila para $os:" >&2
+		echo "$out" | grep -v '^#' | head -20 >&2
+		echo "(confira os arquivos *_windows.go e *_other.go; para enviar mesmo assim: git push --no-verify)" >&2
+		exit 1
+	fi
+done
+echo "pre-push: compila para linux e darwin"

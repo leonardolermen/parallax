@@ -1,4 +1,4 @@
-package motor
+package captura
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/leonardolermen/parallax/internal/platform"
 )
 
 // MaxCorpoPadrao é o limite de bytes gravados por corpo quando
@@ -101,7 +103,7 @@ func NovoGravador(cfg ConfigGravador) (*Gravador, error) {
 			pr.SetXForwarded()
 		},
 		Transport: cfg.Transport,
-		// O motor não escreve no terminal: o log interno do proxy (ex.:
+		// A captura não escreve no terminal: o log interno do proxy (ex.:
 		// "read error during body copy") é descartado.
 		ErrorLog: log.New(io.Discard, "", 0),
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -175,7 +177,7 @@ func (g *Gravador) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	inicio := time.Now()
-	relogio := instante()
+	relogio := platform.Instante()
 	cabReq := r.Header.Clone()
 	if cabReq == nil {
 		cabReq = http.Header{}
@@ -194,7 +196,7 @@ func (g *Gravador) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if falha.Load() || r.Context().Err() != nil || rw.sequestrou || !rw.escreveu {
 		return
 	}
-	latencia := decorridoMs(relogio)
+	latencia := platform.DecorridoMs(relogio)
 	corpoReq, reqTruncado := copiaReq.conteudo()
 	corpoResp, respTruncado := rw.corpo.conteudo()
 	troca := Troca{

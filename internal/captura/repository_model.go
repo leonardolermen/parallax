@@ -1,10 +1,12 @@
-// Package motor é o núcleo do Parallax como biblioteca: gravação de tráfego,
-// e, nas próximas demandas, repetição, comparação e classificação.
+// Package captura grava o tráfego real: o tipo Troca, a leitura e a escrita
+// da captura em JSONL, a máscara de cabeçalhos sensíveis e o gravador (proxy
+// reverso).
 //
-// O motor não lê flags nem escreve no terminal: recebe configuração por
-// structs e devolve valores e erros. A CLI (cmd/parallax) é uma camada fina
-// por cima dele.
-package motor
+// Não lê flags nem escreve no terminal: recebe configuração por structs e
+// devolve valores e erros. A CLI (cmd/parallax) é uma camada fina por cima.
+// As mensagens de erro mantêm o prefixo "motor:" do antigo pacote motor,
+// para a saída da CLI não mudar.
+package captura
 
 import (
 	"net/http"

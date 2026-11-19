@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/leonardolermen/parallax/pkg/motor"
+	"github.com/leonardolermen/parallax/internal/captura"
 	"github.com/leonardolermen/parallax/pkg/veredito"
 )
 
@@ -37,7 +37,7 @@ func gravar(ctx context.Context, args []string, pronto func(endereco string), st
 	saida := fs.String("out", "", "arquivo JSONL da captura (obrigatório; sobrescrito se existir)")
 	amostra := fs.Float64("sample", 1, "fração das trocas gravadas, de 0 a 1")
 	maximo := fs.Int("max", 0, "número máximo de trocas gravadas; 0 = sem limite (depois disso só repassa)")
-	maxCorpo := fs.Int64("max-body", motor.MaxCorpoPadrao, "bytes gravados de cada corpo; acima disso o corpo é cortado e marcado como truncado")
+	maxCorpo := fs.Int64("max-body", captura.MaxCorpoPadrao, "bytes gravados de cada corpo; acima disso o corpo é cortado e marcado como truncado")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return veredito.SaidaAprovado
@@ -87,9 +87,9 @@ func gravar(ctx context.Context, args []string, pronto func(endereco string), st
 		ln.Close()
 		return falhar("não consegui criar %s: %v", *saida, err)
 	}
-	g, err := motor.NovoGravador(motor.ConfigGravador{
+	g, err := captura.NovoGravador(captura.ConfigGravador{
 		Upstream: up,
-		Saida:    motor.NovoEscritor(arquivo),
+		Saida:    captura.NovoEscritor(arquivo),
 		Amostra:  *amostra,
 		Max:      *maximo,
 		MaxCorpo: *maxCorpo,

@@ -1,4 +1,4 @@
-package motor
+package captura
 
 import (
 	"net/http"

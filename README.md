@@ -26,11 +26,34 @@ O contrato do veredito (`veredito.json`) já está definido e documentado em
 
 ## Estrutura
 
-| pacote | papel |
-|---|---|
-| `pkg/veredito` | tipos do contrato, regra do resultado e código de saída. Só depende da biblioteca padrão; é o pacote que o Solaris importa. |
-| `pkg/motor` | o motor como biblioteca: tipo `Troca`, leitura e escrita JSONL, id da execução (ULID) e o gravador (`http.Handler`). Não lê flags nem escreve no terminal. |
-| `cmd/parallax` | CLI fina por cima do motor. |
+Mesmo padrão do Solaris: cada pasta de `internal/` é um contexto, com as
+camadas dentro dela (`repository_*.go` para leitura e escrita em disco,
+`service_*.go` para a lógica, testes `*_test.go` ao lado do arquivo que testam).
+Arquivos de um sistema só terminam em `_windows.go` ou `_other.go` (este com
+`//go:build !windows`). O que está em `internal/` não pode ser importado de
+outro módulo; o que o Solaris importa fica em `pkg/`.
+
+```
+cmd/parallax/           CLI: lê as flags e liga as peças; não tem regra própria
+internal/
+  captura/              gravação do tráfego real
+    repository_model.go   tipo Troca (uma linha da captura)
+    repository_jsonl.go   leitura e escrita da captura em JSONL
+    service_gravador.go   o gravador: proxy reverso (http.Handler) que grava cada troca
+    service_resposta.go   cópia limitada dos corpos e ResponseWriter que grava a resposta
+    service_mascara.go    máscara dos cabeçalhos sensíveis (***)
+  platform/             infraestrutura comum
+    relogio_windows.go    relógio de alta resolução para latência (QueryPerformanceCounter)
+    relogio_other.go      o mesmo fora do Windows (time.Now)
+    service_id.go         id da execução (ULID)
+pkg/
+  veredito/             contrato do veredito, regra do resultado e código de saída;
+                        só a biblioteca padrão. É o pacote que o Solaris importa.
+docs/
+  contrato.md           o veredito.json campo a campo
+  captura.md            o formato da captura (JSONL) e o que não é gravado
+.githooks/pre-push      compila para Linux e macOS antes do push
+```
 
 ## Compilar e testar
 
@@ -45,6 +68,11 @@ Para gravar a versão no binário:
 go build -ldflags "-X main.versao=v0.1.0" -o parallax ./cmd/parallax
 ./parallax version    # parallax v0.1.0
 ```
+
+Antes de cada `git push`, o hook `.githooks/pre-push` compila o projeto (com os
+testes) para Linux e macOS, porque os arquivos `*_windows.go` só entram no build
+do Windows. Para ligar num clone novo: `git config core.hooksPath .githooks`
+(pular uma vez: `git push --no-verify`).
 
 ## Gravar tráfego: `parallax record`
 
@@ -93,72 +121,8 @@ O upstream recebe o `Host` da URL do `--upstream` (funciona com ingress e TLS)
 e o host original em `X-Forwarded-Host`. A captura guarda o `Host` que o
 cliente mandou.
 
-## Formato da captura
-
-Um arquivo JSONL: uma troca por linha, em UTF-8, terminada em `\n`. O tipo em Go
-é `motor.Troca`; para ler em streaming, use `motor.NovoLeitor`.
-
-| campo | tipo | significado |
-|---|---|---|
-| `horario` | string | início da requisição, RFC3339Nano em UTC |
-| `metodo` | string | método HTTP (todos são gravados) |
-| `caminho` | string | caminho da URL, sem a query |
-| `query` | string | query crua, sem o `?`; `""` se não houver |
-| `cabecalhos_requisicao` | objeto (nome → lista de valores) | cabeçalhos da requisição, incluindo `Host`, com os sensíveis mascarados |
-| `corpo_requisicao` | string base64 | corpo da requisição (`""` se vazio) |
-| `corpo_requisicao_truncado` | booleano, opcional | `true` se o corpo passou do `--max-body`; ausente quando `false` |
-| `status` | número | status HTTP devolvido ao cliente |
-| `cabecalhos_resposta` | objeto | cabeçalhos da resposta, com os sensíveis mascarados |
-| `corpo_resposta` | string base64 | corpo da resposta como chegou ao cliente (`""` se vazio; comprimido se veio comprimido) |
-| `corpo_resposta_truncado` | booleano, opcional | idem para a resposta |
-| `latencia_ms` | número | do início da requisição até o fim da resposta, em ms com casas decimais |
-
-Os valores de `Authorization`, `Cookie`, `Set-Cookie` e `X-Api-Key` (sem
-diferenciar maiúsculas) são gravados como `***`, na requisição e na resposta.
-O cliente e o serviço continuam vendo os valores originais.
-
-Uma linha real, gravada pelo código do `parallax record` (a mesma função da
-CLI, chamada num teste) com a mesma requisição do exemplo
-(`GET /status.json?q=1` com `Authorization: Bearer x`). O serviço era o
-`http.FileServer` do Go servindo o mesmo `status.json`, o cliente era o do Go e
-o proxy escutava numa porta aleatória. Por isso `Host`, `User-Agent`,
-`Accept`/`Accept-Encoding`, `Accept-Ranges` e `Server` diferem do que o curl e o
-`python -m http.server` produzem. Aqui ela foi quebrada em linhas para leitura;
-no arquivo é uma linha só:
-
-```json
-{"horario":"2026-11-18T04:40:32.8351407Z","metodo":"GET","caminho":"/status.json","query":"q=1",
- "cabecalhos_requisicao":{"Accept-Encoding":["gzip"],"Authorization":["***"],"Host":["127.0.0.1:59273"],"User-Agent":["Go-http-client/1.1"]},
- "corpo_requisicao":"","status":200,
- "cabecalhos_resposta":{"Accept-Ranges":["bytes"],"Content-Length":["12"],"Content-Type":["application/json"],"Date":["Wed, 18 Nov 2026 04:40:32 GMT"],"Last-Modified":["Wed, 18 Nov 2026 04:40:32 GMT"]},
- "corpo_resposta":"eyJvayI6dHJ1ZX0K","latencia_ms":39.4514}
-```
-
-O `Authorization` foi gravado como `***`, e `corpo_resposta` é o base64 de
-`{"ok":true}\n`.
-
-Para ver os corpos, decodifique o base64. Com `jq`:
-
-```sh
-jq -r '.corpo_resposta | @base64d' captura.jsonl
-# {"ok":true}
-```
-
-### O que não é gravado
-
-- As falhas do próprio proxy (ex.: `502` quando o serviço está fora do ar).
-- Trocas interrompidas no meio (o serviço derrubou a conexão) e requisições em
-  que o cliente desconectou antes do fim. A captura só guarda trocas completas.
-- Conexões que viram WebSocket (upgrade).
-- O que passar depois do `--max`, ou o que o `--sample` não sorteou.
-- No Ctrl+C, o que ainda estiver aberto depois de 5 s (ex.: um SSE sem fim).
-
-### Segurança na repetição
-
-A gravação registra todos os métodos. A repetição (parte 2) só vai repetir
-métodos seguros (`GET`, `HEAD`, `OPTIONS`) por padrão: repetir um `POST` pode
-cobrar, enviar webhook ou mandar e-mail. Outros métodos só com `--allow-unsafe`
-ou com a rota marcada como idempotente no `parallax.yaml`.
+O formato do arquivo (campo a campo, com uma linha real), o que não é gravado e
+a segurança na repetição estão em [docs/captura.md](docs/captura.md).
 
 ## Códigos de saída
 
