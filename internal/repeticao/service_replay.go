@@ -11,12 +11,16 @@ import (
 	"github.com/leonardolermen/parallax/pkg/veredito"
 )
 
+// Estatisticas resume a repetição. Incompletas conta as trocas comparadas sem a
+// resposta inteira de um dos lados (corpo acima de --max-body ou leitura
+// interrompida) e sem falha na candidata.
 type Estatisticas struct {
-	Total      int                `json:"total"`
-	Identicas  int                `json:"identicas"`
-	Diferentes int                `json:"diferentes"`
-	Puladas    int                `json:"puladas"`
-	Latencia   veredito.Latencias `json:"latencia"`
+	Total       int                `json:"total"`
+	Identicas   int                `json:"identicas"`
+	Diferentes  int                `json:"diferentes"`
+	Puladas     int                `json:"puladas"`
+	Incompletas int                `json:"incompletas"`
+	Latencia    veredito.Latencias `json:"latencia"`
 }
 type Resultado struct {
 	ID           string            `json:"id"`
@@ -67,6 +71,9 @@ func Repetir(ctx context.Context, c Config, r io.Reader) (Resultado, error) {
 			out.Estatisticas.Diferentes++
 		}
 		out.Achados = append(out.Achados, achados...)
+		if !falha(p.candidata) && (p.base.Incompleta || p.candidata.Incompleta) {
+			out.Estatisticas.Incompletas++
+		}
 		if p.base.Incompleta || p.candidata.Incompleta || p.base.Erro != "" || p.candidata.Erro != "" {
 			continue
 		}

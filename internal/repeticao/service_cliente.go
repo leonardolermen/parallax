@@ -126,10 +126,15 @@ func enviar(ctx context.Context, client *http.Client, c Config, base string, t c
 	}
 	out.Lado.Corpo = resumo(out.Corpo)
 	if out.Incompleta {
-		out.Lado.Corpo += " [comparacao incompleta]"
+		out.Lado.Corpo += MarcadorIncompleta
 	}
 	return out
 }
+
+// MarcadorIncompleta é o sufixo do resumo do corpo quando a resposta não foi
+// lida inteira (comparação incompleta).
+const MarcadorIncompleta = " [comparacao incompleta]"
+
 func erroHTTP(err error) string {
 	var ne net.Error
 	switch {
