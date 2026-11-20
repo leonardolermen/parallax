@@ -18,6 +18,25 @@ const maxDiffLaudo = 10
 // maxValorLaudo limita o tamanho de cada valor antes/depois no laudo.
 const maxValorLaudo = 80
 
+// maxAchadosEndpoint limita quantos achados de cada endpoint aparecem no
+// laudo; o veredito.json continua com todos.
+const maxAchadosEndpoint = 10
+
+// cercaCodigo devolve uma cerca de crases maior que qualquer sequência de
+// crases do conteúdo, para o bloco de código não fechar antes da hora.
+func cercaCodigo(conteudo string) string {
+	maior, atual := 0, 0
+	for _, c := range conteudo {
+		if c == '`' {
+			atual++
+			maior = max(maior, atual)
+		} else {
+			atual = 0
+		}
+	}
+	return strings.Repeat("`", max(3, maior+1))
+}
+
 // EscreverLaudo escreve o laudo em Markdown: veredito, motivo, estatísticas,
 // regressões de latência (p95 antes/depois), diferenças por endpoint e
 // comparações incompletas. Seções sem itens mostram "Nenhuma.".
@@ -56,7 +75,7 @@ func EscreverLaudo(w io.Writer, e Execucao, v veredito.Veredito) error {
 	} else {
 		p("| Endpoint | p95 antes (ms) | p95 depois (ms) | Variação | Origem |\n|---|---:|---:|---:|---|\n")
 		for _, a := range latencias {
-			p("| %s | %.1f | %.1f | %s | %s |\n", a.Endpoint, a.Base.LatenciaMs, a.Candidata.LatenciaMs, variacao(a.Base.LatenciaMs, a.Candidata.LatenciaMs), a.Origem)
+			p("| %s | %.1f | %.1f | %s | %s |\n", strings.ReplaceAll(a.Endpoint, "|", `\|`), a.Base.LatenciaMs, a.Candidata.LatenciaMs, variacao(a.Base.LatenciaMs, a.Candidata.LatenciaMs), a.Origem)
 		}
 		p("\n")
 	}
@@ -66,9 +85,18 @@ func EscreverLaudo(w io.Writer, e Execucao, v veredito.Veredito) error {
 		p("Nenhuma.\n\n")
 	}
 	sort.SliceStable(diferencas, func(i, j int) bool { return diferencas[i].Endpoint < diferencas[j].Endpoint })
+	noEndpoint := 0
 	for i, a := range diferencas {
 		if i == 0 || diferencas[i-1].Endpoint != a.Endpoint {
 			p("### %s\n\n", a.Endpoint)
+			noEndpoint = 0
+		}
+		noEndpoint++
+		if noEndpoint > maxAchadosEndpoint {
+			if i+1 == len(diferencas) || diferencas[i+1].Endpoint != a.Endpoint {
+				p("- e mais %d achados neste endpoint (veja o veredito.json)\n\n", noEndpoint-maxAchadosEndpoint)
+			}
+			continue
 		}
 		p("- **%s** (%s): status %s → %s\n", a.Tipo, a.Origem, status(a.Base), status(a.Candidata))
 		for j, m := range a.Diff {
@@ -82,7 +110,8 @@ func EscreverLaudo(w io.Writer, e Execucao, v veredito.Veredito) error {
 			p("  - Local: %s\n", a.Local)
 		}
 		if a.Reproducao != "" {
-			p("\n```sh\n%s\n```\n", a.Reproducao)
+			cerca := cercaCodigo(a.Reproducao)
+			p("\n%ssh\n%s\n%s\n", cerca, a.Reproducao, cerca)
 		}
 		p("\n")
 	}

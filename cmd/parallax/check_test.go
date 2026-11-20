@@ -174,3 +174,27 @@ func TestCheckFlagsInvalidas(t *testing.T) {
 		t.Fatal("--report sobrescreveu a captura")
 	}
 }
+
+// Regressão com falha no histórico sai com 4, não 1: o CI não pode perder o
+// registro sem ver. A senha da URL não vai para o execucao.json.
+func TestCheckRegressaoComFalhaNoHistoricoESenha(t *testing.T) {
+	base := servidorCheck(t, 200, "ok")
+	quebrada := servidorCheck(t, 500, "erro")
+	runs := filepath.Join(t.TempDir(), "arquivo")
+	os.WriteFile(runs, []byte("x"), 0o600)
+	codigo, stdout, _ := checarTeste("--capture", capturaCheck(t), "--base", base, "--candidate", quebrada, "--runs-dir", runs)
+	if codigo != 4 || !strings.Contains(stdout, "**REGRESSAO**") {
+		t.Fatalf("código %d, stdout %q", codigo, stdout)
+	}
+
+	runs = filepath.Join(t.TempDir(), "runs")
+	comSenha := strings.Replace(base, "http://", "http://ci:s3cr3t@", 1)
+	if codigo, _, stderr := checarTeste("--capture", capturaCheck(t), "--base", comSenha, "--candidate", base, "--runs-dir", runs); codigo != 0 {
+		t.Fatalf("código %d: %s", codigo, stderr)
+	}
+	ids := execucoesGravadas(t, runs)
+	dados, err := os.ReadFile(filepath.Join(runs, ids[0], "execucao.json"))
+	if err != nil || strings.Contains(string(dados), "s3cr3t") || !strings.Contains(string(dados), "ci:xxxxx@") {
+		t.Fatalf("execucao.json: %v %s", err, dados)
+	}
+}

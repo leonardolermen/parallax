@@ -162,6 +162,9 @@ func (h Historico) Ler(id string) (Execucao, veredito.Veredito, []byte, error) {
 	if err != nil {
 		return e, v, nil, naoEncontrada(err)
 	}
+	if e.ID != id || v.ID != id {
+		return e, v, nil, fmt.Errorf("histórico: %s: id dos arquivos não bate com a pasta", id)
+	}
 	return e, v, laudo, nil
 }
 

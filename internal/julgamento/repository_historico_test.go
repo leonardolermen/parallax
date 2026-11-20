@@ -107,3 +107,39 @@ func TestHistoricoLerInvalido(t *testing.T) {
 		t.Error("Salvar aceitou id inválido")
 	}
 }
+
+func TestHistoricoLerIDTrocado(t *testing.T) {
+	h := Historico{Dir: filepath.Join(t.TempDir(), "runs")}
+	salvarTeste(t, h, idTeste, time.Now())
+	outro := "01JD0000000000000000000005"
+	if err := os.Rename(filepath.Join(h.Dir, idTeste), filepath.Join(h.Dir, outro)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := h.Ler(outro); err == nil {
+		t.Fatal("Ler aceitou pasta com id de outra execução")
+	}
+}
+
+// Gravação interrompida não deixa .tmp nem aparece na listagem.
+func TestHistoricoSalvarInterrompido(t *testing.T) {
+	h := Historico{Dir: filepath.Join(t.TempDir(), "runs")}
+	dir := filepath.Join(h.Dir, idTeste)
+	if err := os.MkdirAll(filepath.Join(dir, "laudo.md"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(dir, "laudo.md", "x"), []byte("x"), 0o600)
+	r := resultadoTeste(1)
+	v, err := Julgar(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Salvar(execucaoTeste(v), v, []byte("laudo")); err == nil {
+		t.Fatal("Salvar não falhou")
+	}
+	if sobras, _ := filepath.Glob(filepath.Join(dir, "*.tmp")); len(sobras) != 0 {
+		t.Fatalf("sobras: %v", sobras)
+	}
+	if es, errs := h.Listar(); len(es) != 0 || len(errs) != 0 {
+		t.Fatalf("listagem: %v %v", es, errs)
+	}
+}

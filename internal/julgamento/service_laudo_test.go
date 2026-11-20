@@ -71,3 +71,23 @@ func TestLaudoSecoesVazias(t *testing.T) {
 		t.Fatalf("laudo aprovado:\n%s", s)
 	}
 }
+
+func TestLaudoCercaTabelaELimitePorEndpoint(t *testing.T) {
+	lat := achado(veredito.Latencia, veredito.Branch, "GET /a|b")
+	lat.Base.LatenciaMs, lat.Candidata.LatenciaMs = 10, 50
+	cerca := achado(veredito.Diferenca, veredito.Branch, "POST /c")
+	cerca.Reproducao = "curl --data-binary '```x'"
+	achados := []veredito.Achado{lat, cerca}
+	for i := 0; i < 13; i++ {
+		achados = append(achados, achado(veredito.Diferenca, veredito.Branch, "GET /muitos"))
+	}
+	s := laudo(t, resultadoTeste(20, achados...))
+	for _, esperado := range []string{`| GET /a\|b |`, "````sh\ncurl --data-binary '```x'\n````", "e mais 3 achados neste endpoint"} {
+		if !strings.Contains(s, esperado) {
+			t.Errorf("laudo sem %q:\n%s", esperado, s)
+		}
+	}
+	if n := strings.Count(s, "status 0 → 0"); n != 11 {
+		t.Errorf("itens de diferença no laudo: %d, esperado 11 (10 de /muitos + 1 de /c)", n)
+	}
+}

@@ -275,7 +275,7 @@ Markdown, nesta ordem:
 - **Veredito**: resultado em maiúsculas, resumo em uma frase e o motivo (a regra que decidiu);
 - **Estatísticas**: total, idênticas, diferentes, puladas, incompletas e p50/p95 de base, candidata e delta;
 - **Regressões de latência**: por endpoint, p95 antes e depois, variação em % e origem;
-- **Diferenças por endpoint**: cada achado com tipo, origem, status base → candidata, até 10 mudanças (`caminho: antes → depois`) e o `curl` de reprodução;
+- **Diferenças por endpoint**: até 10 achados por endpoint (o resto fica no `veredito.json`), cada um com tipo, origem, status base → candidata, até 10 mudanças (`caminho: antes → depois`) e o `curl` de reprodução;
 - **Comparações incompletas**: endpoints em que a base ou a candidata não foi lida inteira.
 
 Seções sem itens mostram "Nenhuma.".
@@ -301,10 +301,16 @@ Uma entrada ilegível aparece como aviso na saída de erro e não impede a
 listagem. `history show` com id inexistente ou inválido sai com 4.
 
 A pasta de cada execução tem permissão 0700 e os arquivos 0600, e cada arquivo
-é gravado de forma atômica. **O `curl` de reprodução pode conter os valores de
-`--header` (um token, por exemplo): não commite `.parallax/`**, que já está no
+é gravado de forma atômica. No Windows essas permissões não valem: os arquivos
+herdam as permissões (ACL) da pasta em que estão.
+
+**O `curl` de reprodução contém os valores de `--header` (um token, por
+exemplo) e a URL da candidata como foi passada.** Ele aparece no laudo, na
+saída padrão (e portanto no log do CI), no `--report`, no `veredito.json` e no
+histórico. Use credenciais de teste e não commite `.parallax/`, que já está no
 `.gitignore`. Senhas em URLs (`http://user:senha@host`) são escondidas no
-`execucao.json`, na listagem e no cabeçalho do laudo, mas não no `curl`.
+`execucao.json`, na listagem e no cabeçalho do laudo, mas não no `curl`; tokens
+na query string das URLs não são escondidos.
 
 Se o histórico não puder ser gravado (disco cheio, pasta sem permissão), o
 laudo aparece mesmo assim, mas o `check` sai com 4: a execução não some sem

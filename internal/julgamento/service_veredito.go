@@ -109,7 +109,7 @@ func Motivo(v veredito.Veredito) string {
 			}
 		}
 	case veredito.Revisar:
-		return "só há diferenças ou achados pré-existentes (inclui comparações incompletas): nada prova regressão, mas é preciso revisar."
+		return "só há diferenças ou achados pré-existentes: nada prova regressão, mas é preciso revisar."
 	}
 	return string(v.Resultado)
 }
