@@ -12,18 +12,19 @@ Go 1.22 ou mais novo, só a biblioteca padrão. Nenhuma chamada a modelo de IA.
 
 ## Estado atual
 
-Esta é a parte 2 de 3:
+As três partes estão prontas:
 
 | comando | estado |
 |---|---|
 | `parallax record` | pronto: grava o tráfego real como proxy reverso |
 | `parallax replay` | pronto: repete a captura contra base e candidata e produz achados JSON |
-| `parallax check` | ainda não implementado (sai com código 3) |
+| `parallax check` | pronto: repete, compara, devolve o veredito com laudo e guarda no histórico |
+| `parallax history` | pronto: lista as execuções guardadas e mostra uma delas |
 | `parallax version`, `parallax help` | prontos |
 
-O contrato do veredito (`veredito.json`) já está definido e documentado em
-[docs/contrato.md](docs/contrato.md). O replay ainda não calcula esse veredito:
-resultado aprovado/reprovado, laudo legível e histórico ficam para a parte 3.
+O contrato do veredito (`veredito.json`) está documentado em
+[docs/contrato.md](docs/contrato.md). Quem calcula o veredito é o `check`; o
+`replay` só produz os achados.
 
 ## Estrutura
 
@@ -44,6 +45,10 @@ internal/
     service_resposta.go   cópia limitada dos corpos e ResponseWriter que grava a resposta
     service_mascara.go    máscara dos cabeçalhos sensíveis (***)
   repeticao/            validação integral, replay concorrente e comparação de respostas
+  julgamento/           veredito, laudo e histórico
+    service_veredito.go   monta o veredito.json, o resumo e o motivo
+    service_laudo.go      laudo em Markdown
+    repository_historico.go  histórico de execuções em .parallax/runs/<id>/
   platform/             infraestrutura comum
     relogio_windows.go    relógio de alta resolução para latência (QueryPerformanceCounter)
     relogio_other.go      o mesmo fora do Windows (time.Now)
@@ -213,8 +218,9 @@ o teto, ou `branch` caso contrário. Com teto 50 ms, 60→100 ms é `branch` e
 ### Saída
 
 O JSON tem `id`, `estatisticas` e `achados` (lista vazia quando não há nenhum).
-As estatísticas incluem `total` repetido, `identicas`, `diferentes`, `puladas`
-e p50/p95 globais de base, candidata e delta. Achados de latência são agregados
+As estatísticas incluem `total` repetido, `identicas`, `diferentes`, `puladas`,
+`incompletas` (trocas comparadas sem a resposta inteira de um dos lados, por
+`--max-body` ou leitura interrompida, sem falha na candidata) e p50/p95 globais de base, candidata e delta. Achados de latência são agregados
 à parte e não aumentam `diferentes`.
 
 Os achados por troca seguem a ordem original da captura, embora os envios
@@ -223,22 +229,106 @@ endpoint. Cada achado traz tipo, origem, endpoint, `curl` da candidata e dados
 dos dois lados (status, corpo resumido a 500 caracteres, latência, trace ID e
 eventual erro), além de diff quando aplicável. Os tipos dos achados estão em
 [docs/contrato.md](docs/contrato.md#achados), mas a saída do replay é própria:
-não contém `versao`, `resultado` ou `resumo`, nem grava histórico.
+não contém `versao`, `resultado` ou `resumo`, nem grava histórico. Para o
+veredito, use o `check`.
+
+## Veredito e laudo: `parallax check`
+
+O `check` faz o mesmo que o `replay` e depois julga: calcula o veredito do
+[contrato](docs/contrato.md), imprime um laudo legível e guarda a execução no
+histórico. É o comando para usar como portão no CI.
+
+```sh
+./parallax check --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081
+```
+
+O resultado segue a regra de `pkg/veredito` (`CalcularResultado`):
+
+| resultado | quando | código |
+|---|---|---|
+| `aprovado` | nenhum achado | 0 |
+| `regressao` (reprovado) | algum `erro_novo`, `contrato_quebrado` ou `latencia` com origem `branch` | 1 |
+| `revisar` (inconclusivo) | só diferenças ou achados pré-existentes, inclusive comparações incompletas por `--max-body` | 2 |
+
+Se nenhuma troca foi comparada (por exemplo, todas eram POST sem
+`--allow-unsafe`), o `check` não aprova sem evidência: sai com 4 e não grava
+nada no histórico.
+
+### Flags do check
+
+Todas as flags do replay, menos `--out`, e mais:
+
+| flag | padrão | significado |
+|---|---|---|
+| `--json` | `false` | imprime o `veredito.json` no lugar do laudo |
+| `--report` | nenhum | grava também o laudo Markdown neste arquivo (sobrescreve; não pode ser a captura) |
+| `--runs-dir` | `.parallax/runs` | pasta do histórico |
+
+O laudo (ou o JSON) vai para a saída padrão; o resultado e onde a execução foi
+gravada vão para a saída de erro.
+
+### O laudo
+
+Markdown, nesta ordem:
+
+- **cabeçalho**: id da execução, data (UTC), captura, base e candidata;
+- **Veredito**: resultado em maiúsculas, resumo em uma frase e o motivo (a regra que decidiu);
+- **Estatísticas**: total, idênticas, diferentes, puladas, incompletas e p50/p95 de base, candidata e delta;
+- **Regressões de latência**: por endpoint, p95 antes e depois, variação em % e origem;
+- **Diferenças por endpoint**: cada achado com tipo, origem, status base → candidata, até 10 mudanças (`caminho: antes → depois`) e o `curl` de reprodução;
+- **Comparações incompletas**: endpoints em que a base ou a candidata não foi lida inteira.
+
+Seções sem itens mostram "Nenhuma.".
+
+## Histórico: `parallax history`
+
+Cada `check` grava uma pasta `<runs-dir>/<id>/` com:
+
+| arquivo | conteúdo |
+|---|---|
+| `veredito.json` | o veredito do [contrato](docs/contrato.md) |
+| `laudo.md` | o laudo |
+| `execucao.json` | id, data, captura (caminho absoluto), base, candidata, resultado, resumo e estatísticas |
+
+```sh
+./parallax history                          # lista, da mais recente para a mais antiga
+./parallax history show 01JD3...            # mostra o laudo de uma execução
+./parallax history show 01JD3... --json     # mostra o veredito.json
+```
+
+`history` e `history show` aceitam `--runs-dir` (padrão `.parallax/runs`).
+Uma entrada ilegível aparece como aviso na saída de erro e não impede a
+listagem. `history show` com id inexistente ou inválido sai com 4.
+
+A pasta de cada execução tem permissão 0700 e os arquivos 0600, e cada arquivo
+é gravado de forma atômica. **O `curl` de reprodução pode conter os valores de
+`--header` (um token, por exemplo): não commite `.parallax/`**, que já está no
+`.gitignore`. Senhas em URLs (`http://user:senha@host`) são escondidas no
+`execucao.json`, na listagem e no cabeçalho do laudo, mas não no `curl`.
+
+Se o histórico não puder ser gravado (disco cheio, pasta sem permissão), o
+laudo aparece mesmo assim, mas o `check` sai com 4: a execução não some sem
+ninguém ver.
 
 ## Códigos de saída
 
-**Replay retorna 0 ao concluir, mesmo com achados; 4 em caso de uso errado,
+**O `check` sai com o código do veredito: 0 aprovado, 1 regressão, 2 revisar.**
+Sai com 4 em uso errado, captura inválida, falha de execução, nenhuma troca
+comparada ou falha ao gravar o histórico.
+
+**O `replay` retorna 0 ao concluir, mesmo com achados; 4 em caso de uso errado,
 captura inválida ou falha de execução.** Erros HTTP comparados são achados e
-não mudam o código de saída. Os códigos 1 e 2 pertencem ao contrato do veredito
-da parte 3, ainda não emitido pelo replay.
+não mudam o código de saída do replay.
 
 | código | quando |
 |---|---|
 | 0 | aprovado (ou comando concluído sem erro) |
-| 1 | regressão |
-| 2 | revisar |
-| 3 | comando ainda não implementado |
+| 1 | regressão (só o `check`) |
+| 2 | revisar (só o `check`) |
 | 4 | uso errado ou falha |
+
+O código 3 (`SaidaNaoImplementado`) continua no contrato, mas nenhum comando o
+usa mais.
 
 O significado de cada campo do veredito e a regra do resultado estão em
 [docs/contrato.md](docs/contrato.md).
