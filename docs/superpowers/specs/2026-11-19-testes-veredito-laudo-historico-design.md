@@ -1,6 +1,6 @@
 # Desenho: testes de veredito, laudo e histórico (#33)
 
-Status: desenho aprovado pelo usuário no Solaris na retomada da demanda #33 ("Aprovo o desenho"). Abordagem A confirmada; plano de execução aguardando revisão.
+Status: desenho aprovado pelo usuário no Solaris na retomada da demanda #33 ("Aprovo o desenho"). Abordagem A confirmada; plano de execução aprovado pelo usuário no Solaris (“Aprovo o plano; execute”).
 
 ## Objetivo e abordagens
 
@@ -26,3 +26,6 @@ Rodar `go test -timeout 120s ./...`, com GOCACHE e GOMODCACHE em TEMP, e repetir
 A suíte de base passou nesta retomada em todos os seis pacotes (resultado do cache). A memória registra que `-race` exige cgo indisponível nesta máquina; permissões Unix 0700/0600 não podem ser verificadas no Windows. Essas limitações serão mantidas explícitas, sem apagar ou pular testes para obter aprovação.
 
 Entregar ao revisor os testes adicionados, eventuais defeitos corrigidos, comandos e resultados, conflitos de reserva e lacunas de ambiente. O Solaris fará os commits; não usar comandos Git de escrita neste worktree.
+
+
+Execução concluída: testes e revisões independentes aprovados. Evidências, limitações e entrega ao revisor #34 estão no plano de testes correspondente. Nenhuma alteração de produção foi necessária.
