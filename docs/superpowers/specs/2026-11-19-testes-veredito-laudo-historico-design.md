@@ -1,6 +1,6 @@
 # Desenho: testes de veredito, laudo e histórico (#33)
 
-Status: aguardando aprovação do desenho. A abordagem A foi escolhida pelo usuário no Solaris.
+Status: desenho aprovado pelo usuário no Solaris na retomada da demanda #33 ("Aprovo o desenho"). Abordagem A confirmada; plano de execução aguardando revisão.
 
 ## Objetivo e abordagens
 
