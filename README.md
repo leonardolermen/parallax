@@ -280,6 +280,12 @@ Markdown, nesta ordem:
 
 Seções sem itens mostram "Nenhuma.".
 
+Os nomes de campo nas mudanças saem como vieram na resposta, sem escape. Um
+nome com crase ou quebra de linha bagunça o Markdown, e um com caractere de
+controle (um `ESC`, por exemplo) chega ao terminal quando o laudo sai na saída
+padrão. O risco é baixo, porque a resposta vem do serviço que você está
+testando; o `veredito.json` não tem esse problema.
+
 ## Histórico: `parallax history`
 
 Cada `check` grava uma pasta `<runs-dir>/<id>/` com:
