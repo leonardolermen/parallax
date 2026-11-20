@@ -1,15 +1,24 @@
 # Captura (`parallax record`)
 
-O formato do arquivo que o `parallax record` grava e o que fica de fora. O código
-está em `internal/captura`. Como usar o comando: [README](../README.md#gravar-tráfego-parallax-record).
+O formato do arquivo que o `parallax record` grava e o que fica de fora. O gravador
+está em `internal/captura`; o formato, em `pkg/captura`. Como usar o comando: [README](../README.md#gravar-tráfego-parallax-record).
 
 ## Formato
 
-Um arquivo JSONL: uma troca por linha, em UTF-8, terminada em `\n`. Dentro do
-Parallax, o tipo em Go é `captura.Troca` e a leitura em streaming é
-`captura.NovoLeitor`. O pacote fica em `internal/` e não pode ser importado de
-outro módulo: quem lê a captura de fora (o Solaris, por exemplo) decodifica as
-linhas pelos campos abaixo.
+Um arquivo JSONL: uma troca por linha, em UTF-8, terminada em `\n`. O tipo em Go
+é `captura.Troca`, do pacote público `pkg/captura`, que também tem a escrita
+(`captura.NovoEscritor`), a leitura em streaming (`captura.NovoLeitor`) e a
+máscara dos cabeçalhos sensíveis (`captura.Mascarar`). Só depende da biblioteca
+padrão. Quem grava tráfego fora do Parallax (o gateway do Solaris, por exemplo)
+importa esse pacote para produzir uma captura que o `replay` e o `check` aceitam:
+
+```go
+import "github.com/leonardolermen/parallax/pkg/captura"
+
+e := captura.NovoEscritor(arquivo)
+_ = e.Escrever(captura.Troca{ /* ... */ CabecalhosRequisicao: captura.Mascarar(h) })
+_ = e.Fechar()
+```
 
 | campo | tipo | significado |
 |---|---|---|

@@ -49,11 +49,10 @@ outro módulo; o que o Solaris importa fica em `pkg/`.
 cmd/parallax/           CLI: lê as flags e liga as peças; não tem regra própria
 internal/
   captura/              gravação do tráfego real
-    repository_model.go   tipo Troca (uma linha da captura)
-    repository_jsonl.go   leitura e escrita da captura em JSONL
+    repository_model.go   aliases para o formato em pkg/captura
     service_gravador.go   o gravador: proxy reverso (http.Handler) que grava cada troca
     service_resposta.go   cópia limitada dos corpos e ResponseWriter que grava a resposta
-    service_mascara.go    máscara dos cabeçalhos sensíveis (***)
+    service_mascara.go    máscara dos cabeçalhos sensíveis (***), a de pkg/captura
   repeticao/            validação integral, replay concorrente e comparação de respostas
   julgamento/           veredito, laudo e histórico
     service_veredito.go   monta o veredito.json, o resumo e o motivo
@@ -64,6 +63,8 @@ internal/
     relogio_other.go      o mesmo fora do Windows (time.Now)
     service_id.go         id da execução (ULID)
 pkg/
+  captura/              formato da captura: Troca, escrita e leitura em JSONL e máscara;
+                        só a biblioteca padrão. Para quem grava tráfego fora do Parallax.
   veredito/             contrato do veredito, regra do resultado e código de saída;
                         só a biblioteca padrão. É o pacote que o Solaris importa.
 docs/
