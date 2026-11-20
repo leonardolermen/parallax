@@ -37,7 +37,7 @@ func TestHelp(t *testing.T) {
 		if codigo != 0 {
 			t.Errorf("%s: código %d", arg, codigo)
 		}
-		for _, cmd := range []string{"record", "replay", "check", "version"} {
+		for _, cmd := range []string{"record", "replay", "check", "history", "version"} {
 			if !strings.Contains(stdout, cmd) {
 				t.Errorf("%s: ajuda sem %q", arg, cmd)
 			}
@@ -53,12 +53,10 @@ func TestHelp(t *testing.T) {
 	}
 }
 
-func TestNaoImplementado(t *testing.T) {
-	for _, cmd := range []string{"check"} {
-		codigo, _, stderr := rodar(cmd)
-		if codigo != 3 || !strings.Contains(stderr, "ainda não implementado") {
-			t.Errorf("%s: código %d, stderr %q", cmd, codigo, stderr)
-		}
+func TestCheckSemFlags(t *testing.T) {
+	codigo, _, stderr := rodar("check")
+	if codigo != 4 || !strings.Contains(stderr, "falta --capture") {
+		t.Errorf("check: código %d, stderr %q", codigo, stderr)
 	}
 }
 
