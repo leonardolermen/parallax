@@ -1,4 +1,14 @@
-# Parallax
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Parallax: o juiz de comportamento das mudanças feitas por agentes de código" width="100%">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.22+">
+  <img src="https://img.shields.io/badge/depend%C3%AAncias-s%C3%B3%20a%20stdlib-8ab8f0" alt="Só a biblioteca padrão">
+  <img src="https://img.shields.io/badge/IA-nenhuma%20chamada-c4b1f2" alt="Nenhuma chamada a modelo de IA">
+</p>
+
+# <img src="docs/assets/icon.svg" alt="" width="36" align="top"> Parallax
 
 O Parallax é o juiz de comportamento das mudanças feitas por agentes de código.
 Ele não sobe ambientes: recebe duas versões de um serviço que já estão rodando,
@@ -6,7 +16,7 @@ a **base** (a versão atual) e a **candidata** (a branch do agente), repete
 contra as duas um tráfego real gravado, compara as respostas e devolve um
 veredito estruturado: o que está errado, onde e como reproduzir.
 
-Quem chama o Parallax é o Solaris, um orquestrador de agentes, que decide o que fazer com o veredito.
+<img src="docs/assets/solaris-icon.svg" alt="" width="20" align="top"> Quem chama o Parallax é o [Solaris](https://github.com/leonardolermen/solaris), um orquestrador de agentes, que decide o que fazer com o veredito.
 
 Go 1.22 ou mais novo, só a biblioteca padrão. Nenhuma chamada a modelo de IA.
 

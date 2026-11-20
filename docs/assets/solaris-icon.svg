@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Favicon do Solaris (também o ícone do app em 16 e 32 px): a marca simplificada, o planeta laranja
+       com o anel sobre o fundo escuro arredondado. As órbitas finas da arte completa sumiriam nesse tamanho. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1f2b"/>
+      <stop offset="1" stop-color="#0b0c11"/>
+    </linearGradient>
+    <radialGradient id="planeta" cx="36%" cy="32%" r="72%">
+      <stop offset="0" stop-color="#ffd98c"/>
+      <stop offset=".55" stop-color="#f5a742"/>
+      <stop offset="1" stop-color="#d1702a"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#fundo)"/>
+  <g transform="rotate(-16 16 16)">
+    <path d="M4.5 16 A11.5 3.6 0 0 1 27.5 16" fill="none" stroke="#f3c56f" stroke-opacity=".55" stroke-width="1.7" stroke-linecap="round"/>
+  </g>
+  <circle cx="16" cy="16" r="7.2" fill="url(#planeta)"/>
+  <g transform="rotate(-16 16 16)">
+    <path d="M27.5 16 A11.5 3.6 0 0 1 4.5 16" fill="none" stroke="#f7d38a" stroke-width="1.7" stroke-linecap="round"/>
+  </g>
+  <circle cx="25.6" cy="7.4" r="1.6" fill="#f6e7c9"/>
+</svg>
