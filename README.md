@@ -344,3 +344,18 @@ usa mais.
 
 O significado de cada campo do veredito e a regra do resultado estão em
 [docs/contrato.md](docs/contrato.md).
+
+## Decisões
+
+- **O `replay` continua saindo com 0 e o portão do CI é o `check`.** Fazer o
+  `replay` sair com 1 ou 2 quebraria o comportamento documentado na parte 2;
+  quem já usa o 0 do `replay` não é afetado.
+- **"Reprovado" e "inconclusivo" são `regressao` e `revisar`.** O contrato e o
+  `pkg/veredito` (que o Solaris importa) não mudaram: um estado novo quebraria
+  o `Validar` e as integrações sem ganho, e `revisar` já cobre as comparações
+  incompletas.
+- **Nenhuma troca comparada dá 4.** O `check` não aprova sem evidência.
+- **Histórico em arquivos JSON, sem banco.** O projeto usa só a biblioteca
+  padrão do Go, então nada de SQLite ou outra dependência. Cada execução fica
+  numa pasta própria, no formato que o contrato já previa
+  (`.parallax/runs/<id>/`).
