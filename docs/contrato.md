@@ -116,7 +116,7 @@ Mapeados por `veredito.CodigoSaida(resultado)` e pelas constantes `Saida*`:
 | 0 | `SaidaAprovado` | resultado `aprovado` |
 | 1 | `SaidaRegressao` | resultado `regressao` |
 | 2 | `SaidaRevisar` | resultado `revisar` |
-| 3 | `SaidaNaoImplementado` | subcomando ainda não implementado |
+| 3 | `SaidaNaoImplementado` | reservado; nenhum comando o usa desde que o `check` foi implementado |
 | 4 | `SaidaErro` | uso errado da CLI ou falha de execução |
 
 ## Exemplo completo

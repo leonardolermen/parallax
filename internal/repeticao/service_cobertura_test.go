@@ -230,14 +230,35 @@ func TestCorpoExcessivoIncompletoForaDaLatencia(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Estatisticas.Diferentes != 1 || len(r.Achados) != 1 || r.Achados[0].Tipo != veredito.Diferenca {
+	if r.Estatisticas.Diferentes != 1 || r.Estatisticas.Incompletas != 1 || len(r.Achados) != 1 || r.Achados[0].Tipo != veredito.Diferenca {
 		t.Fatalf("%+v", r)
 	}
-	if !strings.HasSuffix(r.Achados[0].Candidata.Corpo, "[comparacao incompleta]") || !strings.HasPrefix(r.Achados[0].Candidata.Corpo, "xxxxxxxxxx ") {
+	if !strings.HasSuffix(r.Achados[0].Candidata.Corpo, MarcadorIncompleta) || !strings.HasPrefix(r.Achados[0].Candidata.Corpo, "xxxxxxxxxx ") {
 		t.Fatalf("resumo do corpo: %q", r.Achados[0].Candidata.Corpo)
 	}
 	if r.Estatisticas.Latencia.Base.P95 != 0 || r.Estatisticas.Latencia.Candidata.P95 != 0 {
 		t.Fatalf("resposta incompleta entrou nos percentis: %+v", r.Estatisticas.Latencia)
+	}
+}
+
+// Candidata com 5xx e corpo grande é erro_novo, não comparação incompleta.
+func TestErroComCorpoGrandeNaoContaComoIncompleta(t *testing.T) {
+	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) }))
+	defer ok.Close()
+	quebrado := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(bytes.Repeat([]byte("x"), 64))
+	}))
+	defer quebrado.Close()
+	c := configTeste(ok.URL)
+	c.Candidata = quebrado.URL
+	c.MaxCorpo = 10
+	r, err := Repetir(context.Background(), c, capturaTeste(captura.Troca{Metodo: "GET", Caminho: "/x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Estatisticas.Incompletas != 0 || len(r.Achados) != 1 || r.Achados[0].Tipo != veredito.ErroNovo {
+		t.Fatalf("%+v", r)
 	}
 }
 

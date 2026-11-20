@@ -7,28 +7,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/leonardolermen/parallax/internal/repeticao"
 	"github.com/leonardolermen/parallax/pkg/veredito"
 )
-
-type cabecalhosReplay struct{ valores http.Header }
-
-func (h *cabecalhosReplay) String() string { return "" }
-
-func (h *cabecalhosReplay) Set(valor string) error {
-	nome, conteudo, ok := strings.Cut(valor, ":")
-	nome = strings.Trim(nome, " \t")
-	if !ok || nome == "" {
-		return fmt.Errorf("cabeçalho deve ter formato Nome: valor")
-	}
-	h.valores.Add(nome, strings.Trim(conteudo, " \t"))
-	return nil
-}
 
 // repetir implementa replay sem calcular veredito ou gravar histórico.
 func repetir(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -39,19 +23,8 @@ func repetir(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "Uso: parallax replay --capture ARQUIVO --base URL --candidate URL [flags]\n\nRepete e compara; produz achados JSON sem veredito final.\n\nFlags:")
 		fs.PrintDefaults()
 	}
-	capture := fs.String("capture", "", "captura JSONL (obrigatória)")
-	fs.StringVar(&cfg.Base, "base", "", "URL HTTP(S) da base (obrigatória)")
-	fs.StringVar(&cfg.Candidata, "candidate", "", "URL HTTP(S) da candidata (obrigatória)")
+	capture, headers := registrarFlagsRepeticao(fs, &cfg)
 	out := fs.String("out", "", "arquivo JSON de saída; vazio = stdout")
-	fs.IntVar(&cfg.Trabalhadores, "workers", cfg.Trabalhadores, "máximo de trabalhadores")
-	fs.DurationVar(&cfg.Timeout, "timeout", cfg.Timeout, "timeout por requisição (ex.: 10s)")
-	fs.Float64Var(&cfg.PercentualLatencia, "latency-pct", cfg.PercentualLatencia, "aumento percentual do p95")
-	fs.Float64Var(&cfg.MinimoLatenciaMs, "latency-min-ms", cfg.MinimoLatenciaMs, "aumento mínimo do p95 em ms")
-	fs.Float64Var(&cfg.LimiteAbsolutoMs, "latency-max-ms", cfg.LimiteAbsolutoMs, "teto absoluto do p95 em ms; 0 desativa")
-	fs.BoolVar(&cfg.PermitirInseguros, "allow-unsafe", false, "repetir também métodos inseguros")
-	fs.Int64Var(&cfg.MaxCorpo, "max-body", cfg.MaxCorpo, "máximo de bytes por resposta; excesso gera comparação incompleta")
-	headers := &cabecalhosReplay{valores: make(http.Header)}
-	fs.Var(headers, "header", "cabeçalho Nome: valor para ambos os destinos; repetível")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return veredito.SaidaAprovado
