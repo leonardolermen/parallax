@@ -1,52 +1,28 @@
-// Package captura grava o tráfego real: o tipo Troca, a leitura e a escrita
-// da captura em JSONL, a máscara de cabeçalhos sensíveis e o gravador (proxy
-// reverso).
+// Package captura grava o tráfego real: o gravador (proxy reverso) que
+// produz a captura. O formato (Troca, leitura e escrita em JSONL, máscara)
+// fica em pkg/captura, público; aqui ficam aliases para o resto do Parallax
+// não mudar.
 //
 // Não lê flags nem escreve no terminal: recebe configuração por structs e
 // devolve valores e erros. A CLI (cmd/parallax) é uma camada fina por cima.
-// As mensagens de erro mantêm o prefixo "motor:" do antigo pacote motor,
-// para a saída da CLI não mudar.
 package captura
 
-import (
-	"net/http"
-	"time"
+import pub "github.com/leonardolermen/parallax/pkg/captura"
+
+// Troca é pkg/captura.Troca.
+type Troca = pub.Troca
+
+// Escritor e Leitor são os de pkg/captura.
+type (
+	Escritor = pub.Escritor
+	Leitor   = pub.Leitor
 )
 
-// Troca é uma requisição HTTP e a resposta que o cliente recebeu, como fica
-// gravada numa linha da captura JSONL.
-//
-// As tags json são estáveis: mudá-las quebra capturas já gravadas.
-// Os corpos ([]byte) viram base64 padrão no JSON; corpo vazio é "" (o campo
-// nunca é omitido). Os cabeçalhos sensíveis (Authorization, Cookie,
-// Set-Cookie, X-Api-Key) ficam gravados com o valor "***".
-type Troca struct {
-	// Horario do início da requisição, em UTC, RFC3339Nano no JSON.
-	Horario time.Time `json:"horario"`
-	// Metodo HTTP (GET, POST...). Todos os métodos são gravados.
-	Metodo string `json:"metodo"`
-	// Caminho da URL, sem a query (ex.: "/orders/42").
-	Caminho string `json:"caminho"`
-	// Query crua, sem o "?" (ex.: "expand=items&x=1"); "" se não houver.
-	Query string `json:"query"`
-	// CabecalhosRequisicao enviados pelo cliente, com os sensíveis mascarados.
-	// Inclui o Host que o cliente mandou.
-	CabecalhosRequisicao http.Header `json:"cabecalhos_requisicao"`
-	// CorpoRequisicao (base64 no JSON), até o limite de corpo.
-	CorpoRequisicao []byte `json:"corpo_requisicao"`
-	// CorpoRequisicaoTruncado é true quando o corpo passou do limite e foi
-	// gravado cortado. Omitido quando false.
-	CorpoRequisicaoTruncado bool `json:"corpo_requisicao_truncado,omitempty"`
-	// Status HTTP devolvido ao cliente.
-	Status int `json:"status"`
-	// CabecalhosResposta devolvidos ao cliente, com os sensíveis mascarados.
-	CabecalhosResposta http.Header `json:"cabecalhos_resposta"`
-	// CorpoResposta como chegou ao cliente (base64 no JSON), até o limite.
-	// Corpos comprimidos são gravados como vieram.
-	CorpoResposta []byte `json:"corpo_resposta"`
-	// CorpoRespostaTruncado é true quando o corpo passou do limite.
-	CorpoRespostaTruncado bool `json:"corpo_resposta_truncado,omitempty"`
-	// LatenciaMs do início da requisição até o fim da resposta, em
-	// milissegundos com casas decimais.
-	LatenciaMs float64 `json:"latencia_ms"`
-}
+// ErrEscritorFechado é pkg/captura.ErrEscritorFechado.
+var ErrEscritorFechado = pub.ErrEscritorFechado
+
+// NovoEscritor e NovoLeitor são os de pkg/captura.
+var (
+	NovoEscritor = pub.NovoEscritor
+	NovoLeitor   = pub.NovoLeitor
+)
