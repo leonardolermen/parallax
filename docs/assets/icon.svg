@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Parallax">
+  <!-- Marca do Parallax: duas lentes deslocadas, a base (azul) e a candidata (violeta), vistas de dois
+       pontos (a paralaxe). Onde as duas coincidem, a interseção acende na cor do Solaris: o comportamento
+       que bate. O ponto fora da interseção é a diferença que o veredito aponta. -->
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1f2b"/>
+      <stop offset="1" stop-color="#0b0c11"/>
+    </linearGradient>
+    <radialGradient id="base" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#b9d6f7"/>
+      <stop offset="1" stop-color="#4f7fbf"/>
+    </radialGradient>
+    <radialGradient id="cand" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#ddd0fa"/>
+      <stop offset="1" stop-color="#7d63c4"/>
+    </radialGradient>
+    <linearGradient id="lente" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd98c"/>
+      <stop offset="1" stop-color="#e08a35"/>
+    </linearGradient>
+    <clipPath id="soBase"><circle cx="25" cy="32" r="14"/></clipPath>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#fundo)"/>
+  <circle cx="25" cy="32" r="14" fill="url(#base)" fill-opacity=".9"/>
+  <circle cx="39" cy="32" r="14" fill="url(#cand)" fill-opacity=".9"/>
+  <circle cx="39" cy="32" r="14" fill="url(#lente)" clip-path="url(#soBase)"/>
+  <circle cx="25" cy="32" r="14" fill="none" stroke="#e6eaf0" stroke-opacity=".35" stroke-width="1"/>
+  <circle cx="39" cy="32" r="14" fill="none" stroke="#e6eaf0" stroke-opacity=".35" stroke-width="1"/>
+  <circle cx="49" cy="15" r="2.4" fill="#f28b8b"/>
+</svg>
