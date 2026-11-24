@@ -48,4 +48,10 @@ type Troca struct {
 	// LatenciaMs do início da requisição até o fim da resposta, em
 	// milissegundos com casas decimais.
 	LatenciaMs float64 `json:"latencia_ms"`
+	// CamposVolateis são os campos da resposta que mudam sozinhos entre duas
+	// chamadas iguais à mesma versão (horário, contador), em caminhos JSON
+	// como "$.geradoEm" e "$.itens[0].visto"; "$" é o corpo inteiro. O replay
+	// não compara esses campos. Quem preenche é o "parallax explore"; omitido
+	// quando vazio.
+	CamposVolateis []string `json:"campos_volateis,omitempty"`
 }

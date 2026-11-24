@@ -34,6 +34,7 @@ _ = e.Fechar()
 | `corpo_resposta` | string base64 | corpo da resposta como chegou ao cliente (`""` se vazio; comprimido se veio comprimido) |
 | `corpo_resposta_truncado` | booleano, opcional | idem para a resposta |
 | `latencia_ms` | número | do início da requisição até o fim da resposta, em ms com casas decimais |
+| `campos_volateis` | lista de strings, opcional | campos da resposta que mudam sozinhos entre duas chamadas à mesma versão, em caminhos JSON (`$.geradoEm`, `$.itens[0].visto`; `$` é o corpo inteiro). O replay não os compara. Só o `parallax explore` preenche; ausente quando vazio |
 
 Os valores de `Authorization`, `Cookie`, `Set-Cookie` e `X-Api-Key` (sem
 diferenciar maiúsculas) são gravados como `***`, na requisição e na resposta.

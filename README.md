@@ -27,6 +27,7 @@ As três partes estão prontas:
 | comando | estado |
 |---|---|
 | `parallax record` | pronto: grava o tráfego real como proxy reverso |
+| `parallax explore` | pronto: monta a captura sem tráfego gravado, descobrindo as rotas GET |
 | `parallax replay` | pronto: repete a captura contra base e candidata e produz achados JSON |
 | `parallax check` | pronto: repete, compara, devolve o veredito com laudo e guarda no histórico |
 | `parallax history` | pronto: lista as execuções guardadas e mostra uma delas |
@@ -53,6 +54,13 @@ internal/
     service_gravador.go   o gravador: proxy reverso (http.Handler) que grava cada troca
     service_resposta.go   cópia limitada dos corpos e ResponseWriter que grava a resposta
     service_mascara.go    máscara dos cabeçalhos sensíveis (***), a de pkg/captura
+  exploracao/           captura sem tráfego gravado (parallax explore)
+    repository_codigo.go  rotas GET escritas no código-fonte
+    service_rotas.go      modelos de rota com parâmetro ({id}, :id, <id>, ${id})
+    service_respostas.go  caminhos citados no HTML, no JavaScript, no JSON e no OpenAPI
+    service_valores.go    valores vistos nas respostas, para preencher os parâmetros
+    service_explorador.go a exploração: fila, limites, exclusões e gravação das trocas
+    service_volateis.go   segunda chamada para marcar os campos que mudam sozinhos
   repeticao/            validação integral, replay concorrente e comparação de respostas
   julgamento/           veredito, laudo e histórico
     service_veredito.go   monta o veredito.json, o resumo e o motivo
@@ -142,6 +150,82 @@ cliente mandou.
 O formato do arquivo (campo a campo, com uma linha real), o que não é gravado e
 a segurança na repetição estão em [docs/captura.md](docs/captura.md).
 
+## Sem tráfego gravado: `parallax explore`
+
+O `record` só serve quando alguém já usou o serviço. O `explore` monta a
+captura sem esperar tráfego: roda contra a **base** (a versão atual), descobre
+as rotas GET e grava o que ela respondeu, no mesmo formato. O `check` usa essa
+captura como se fosse tráfego real: o Parallax não precisa saber a resposta
+certa, só que a base e a candidata respondam igual.
+
+```sh
+parallax explore --target http://localhost:8080 --source . --out captura.jsonl
+# 84 trocas gravadas em captura.jsonl (181 visitadas, 83 rotas no código, 22 modelos com parâmetro)
+parallax check --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081
+```
+
+De onde vêm as rotas:
+
+- **Código (`--source`, repetível):** as linhas que registram rota com o
+  caminho escrito como texto: `HandleFunc("GET /x/{id}")` (Go), `app.get('/x/:id')`
+  (Express), `@app.route("/x/<id>")` (Flask), `@GetMapping("/x/{id}")` (Spring),
+  `path()` (Django) e as chamadas do frontend (`fetch('/api/x')`,
+  `` fetch(`/api/x/${id}`) ``). Linhas de POST, PUT, PATCH e DELETE ficam de
+  fora, assim como testes, `node_modules`, `vendor` e pastas ocultas. Um
+  prefixo montado em outro arquivo (`app.use('/api', router)`) não é somado.
+- **Respostas:** a partir de `/`, os links do HTML, os caminhos citados no
+  JavaScript e no JSON (strings que começam com `/` ou URLs do mesmo host), o
+  `Location` dos redirecionamentos e as rotas GET de um documento OpenAPI ou
+  Swagger (`/openapi.json`, `/swagger.json`, `/v3/api-docs`...).
+- **Parâmetros:** `/projetos/{id}` é preenchido com os itens que `/projetos`
+  listou (campos `id`, `uuid`, `slug`, `name`...) ou com valores de uma chave
+  de mesmo nome vista em qualquer resposta. Sem valor, a rota fica de fora e
+  aparece no resumo.
+
+O que fica de fora:
+
+- Tudo que não é GET: nada que mude dado é chamado de propósito.
+- `--exclude` (regex): por padrão, um segmento como `logout`, `delete`,
+  `reset`, `shutdown`, ou um último segmento que é uma ação (`/toggle`,
+  `/fix`, `/run`, `/start`, `/merge`, `/send`, `/approve`...). Mesmo em GET,
+  um handler que não confere o método executaria a ação.
+- Caminho adivinhado (código, script, modelo, OpenAPI, a raiz) que respondeu
+  404 ou 405: não testa nada. Link de uma página que respondeu 404 entra (é
+  comportamento).
+- SSE, websocket, timeout e erro de conexão.
+- CSS, imagens, fontes e JavaScript (o JavaScript é lido para achar as
+  chamadas à API, mas não é gravado); `--assets` grava também.
+- Mais de `--per-route` (3) trocas da mesma rota (`/pedidos/{id}`, ou
+  `/pedidos/1`, `/pedidos/2`... pelo formato) e mais de `--max` (300) no total.
+
+**Campos que mudam sozinhos.** Depois de explorar, cada rota é chamada de novo
+na base, pelo menos 1,1 s depois da primeira. O que mudou entre as duas
+(`geradoEm`, um contador, a ordem de uma lista) vai para `campos_volateis` da
+troca, e o replay não compara esses campos; se o corpo não é JSON e mudou, o
+corpo inteiro (`$`) deixa de ser comparado (status e cabeçalhos continuam).
+Sem isso, toda exploração terminaria em `revisar`.
+
+Contra o próprio Solaris, com o banco vazio: 84 trocas em 2 s, e o `check` da
+base contra ela mesma deu `aprovado` (4 trocas com campos voláteis).
+
+### Flags do explore
+
+| flag | padrão | o que faz |
+|---|---|---|
+| `--target` | obrigatória | URL do serviço rodando, de preferência a base; um caminho na URL vira prefixo |
+| `--out` | obrigatória | arquivo JSONL da captura (sobrescrito) |
+| `--source` | nenhuma | pasta com o código do serviço; repetível |
+| `--max` | 300 | máximo de trocas gravadas |
+| `--per-route` | 3 | máximo de trocas por rota |
+| `--timeout` | 10s | timeout por requisição |
+| `--max-body` | 1 MiB | bytes gravados de cada resposta |
+| `--exclude` | ações e logout | regex dos caminhos não visitados; `""` desliga |
+| `--assets` | false | grava também CSS, imagens, fontes e JavaScript |
+| `--header` | nenhum | `Nome: valor` em cada requisição; repetível; credenciais são gravadas como `***` (passe o mesmo `--header` no check) |
+
+Sai com 0 quando gravou alguma troca e com 4 quando nada respondeu ou o uso
+está errado.
+
 ## Repetir e comparar: `parallax replay`
 
 Com a base na porta 8080, a candidata na 8081 e uma captura feita pelo
@@ -208,6 +292,9 @@ Veja também [segurança da captura](docs/captura.md#segurança-na-repetição).
   `pre_existente` se a base também tem uma dessas falhas; senão, `branch`.
   Outras falhas de rede, como DNS ou conexão interrompida só na candidata,
   geram `diferenca`.
+- Os `campos_volateis` da troca (preenchidos pelo `explore`) não são
+  comparados; `$` tira o corpo inteiro da comparação. O contrato quebrado é
+  recalculado só com as mudanças que sobraram.
 - Resposta acima de `--max-body` gera `diferenca` por comparação incompleta
   e a execução continua; igualdade dos prefixos não significa resposta idêntica.
   A classificação `erro_novo` tem prioridade sobre comparação incompleta.

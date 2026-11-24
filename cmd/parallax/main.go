@@ -24,6 +24,7 @@ Uso:
 
 Comandos:
   record    grava o tráfego real como proxy reverso na frente de um serviço
+  explore   monta uma captura sem tráfego gravado, descobrindo as rotas GET
   replay    repete uma captura contra base e candidata e produz achados JSON
   check     repete, compara e devolve o veredito com laudo; guarda no histórico
   history   lista as execuções guardadas; "history show ID" mostra uma delas
@@ -32,6 +33,7 @@ Comandos:
 
 Exemplo:
   parallax record --listen :9100 --upstream http://localhost:8080 --out captura.jsonl
+  parallax explore --target http://localhost:8080 --source . --out captura.jsonl
   parallax replay --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081
   parallax check --capture captura.jsonl --base http://localhost:8080 --candidate http://localhost:8081
   parallax history
@@ -65,6 +67,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return gravar(ctx, args[1:], func(endereco string) {
 			fmt.Fprintf(stderr, "gravando em %s (Ctrl+C para encerrar)\n", endereco)
 		}, stderr)
+	case "explore":
+		ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer parar()
+		return explorar(ctx, args[1:], stderr)
 	case "replay":
 		ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer parar()
