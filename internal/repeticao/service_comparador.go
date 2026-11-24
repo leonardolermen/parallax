@@ -47,9 +47,13 @@ func comparar(t captura.Troca, c Config, b, a resposta) []veredito.Achado {
 	bj, bok := decodificar(b.Corpo)
 	aj, aok := decodificar(a.Corpo)
 	if bok && aok {
+		n := len(diffs)
 		diffJSON("$", bj, aj, true, true, &diffs, &broken)
+		if len(t.CamposVolateis) > 0 {
+			diffs, broken = semVolateis(diffs, n, t.CamposVolateis, broken)
+		}
 		changed = changed || len(diffs) > 0
-	} else {
+	} else if !corpoVolatil(t.CamposVolateis) {
 		changed = changed || !bytes.Equal(b.Corpo, a.Corpo)
 	}
 	if !changed {
